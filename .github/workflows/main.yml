@@ -1,0 +1,42 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Build App
+        run: yarn build
+
+      - name: Build Docker Image
+        run: docker build -t devsecops-app .
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+      - name: Run Security Scan
+        run: trivy image devsecops-app
